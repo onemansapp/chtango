@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>単語フラッシュカード</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f0f2f5;
+    --card-bg: #ffffff;
+    --card-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+    --text-primary: #1a1a2e;
+    --text-secondary: #5a6a85;
+    --text-pinyin: #3d6b9a;
+    --accent: #4f6ef7;
+    --accent-light: #eef0ff;
+    --correct: #22a06b;
+    --correct-light: #e3f9f0;
+    --wrong: #e5484d;
+    --wrong-light: #ffeef0;
+    --border: #dde2ec;
+    --btn-bg: #ffffff;
+    --progress-track: #dde2ec;
+    --progress-fill: #4f6ef7;
+    --result-bg: #ffffff;
+    --disabled: #c0c8d8;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0;
+  }
+
+  /* ── Header ── */
+  .header {
+    width: 100%;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.01em;
+  }
+
+  .progress-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+  }
+
+  .progress-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
+  }
+
+  .progress-bar {
+    width: 140px;
+    height: 4px;
+    background: var(--progress-track);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--progress-fill);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+  }
+
+  /* ── Main area ── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 32px 20px 24px;
+    gap: 28px;
+  }
+
+  /* ── Card scene (3D flip) ── */
+  .scene {
+    width: 100%;
+    max-width: 520px;
+    height: 300px;
+    perspective: 1000px;
+    cursor: pointer;
+  }
+
+  .card-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
+  }
+
+  .card-inner.flipped {
+    transform: rotateY(180deg);
+  }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    background: var(--card-bg);
+    border-radius: 20px;
+    box-shadow: var(--card-shadow);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 36px;
+    user-select: none;
+  }
+
+  .card-back {
+    transform: rotateY(180deg);
+  }
+
+  .card-hint {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    position: absolute;
+    bottom: 18px;
+    right: 22px;
+  }
+
+  .word-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+
+  .word-text {
+    font-size: clamp(32px, 7vw, 52px);
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: center;
+    line-height: 1.2;
+    letter-spacing: 0.04em;
+  }
+
+  .pinyin-text {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text-pinyin);
+    margin-bottom: 18px;
+    letter-spacing: 0.04em;
+  }
+
+  .meaning-text {
+    font-size: 16px;
+    color: var(--text-primary);
+    text-align: center;
+    line-height: 1.65;
+    max-width: 380px;
+  }
+
+  /* ── Judgment buttons (flanking the card) ── */
+  .card-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 700px;
+  }
+
+  .judge-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: none;
+    font-size: 26px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.3s;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  }
+
+  .judge-btn:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .btn-wrong {
+    background: var(--wrong-light);
+    color: var(--wrong);
+  }
+
+  .btn-correct {
+    background: var(--correct-light);
+    color: var(--correct);
+  }
+
+  .judge-btn:not(:disabled):hover {
+    transform: scale(1.12);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.16);
+  }
+
+  .judge-btn:not(:disabled):active {
+    transform: scale(0.96);
+  }
+
+  /* ── Back button ── */
+  .footer {
+    padding: 0 20px 32px;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .back-btn {
+    background: var(--btn-bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 24px;
+    border-radius: 99px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .back-btn:hover:not(:disabled) {
+    background: #f5f7ff;
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 2px 8px rgba(79,110,247,0.12);
+  }
+
+  .back-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  /* ── Result screen ── */
+  .result-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 100vh;
+    padding: 40px 20px;
+    gap: 28px;
+  }
+
+  .result-card {
+    background: var(--result-bg);
+    border-radius: 24px;
+    box-shadow: var(--card-shadow);
+    padding: 48px 40px;
+    max-width: 480px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .result-emoji {
+    font-size: 56px;
+    margin-bottom: 8px;
+  }
+
+  .result-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .result-stats {
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  .result-score-row {
+    display: flex;
+    gap: 16px;
+    margin: 12px 0;
+  }
+
+  .score-pill {
+    padding: 10px 24px;
+    border-radius: 99px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .score-correct {
+    background: var(--correct-light);
+    color: var(--correct);
+  }
+
+  .score-wrong {
+    background: var(--wrong-light);
+    color: var(--wrong);
+  }
+
+  .result-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 320px;
+    margin-top: 8px;
+  }
+
+  .result-btn {
+    width: 100%;
+    padding: 14px 24px;
+    border-radius: 12px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.15s;
+  }
+
+  .result-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+  .result-btn:active { transform: scale(0.98); }
+
+  .btn-primary-action {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .btn-secondary-action {
+    background: var(--btn-bg);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+
+  .download-notice {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: -4px;
+    opacity: 0.7;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    .scene { height: 260px; }
+    .card-face { padding: 24px 20px; }
+    .judge-btn { width: 56px; height: 56px; font-size: 22px; }
+    .card-row { gap: 12px; }
+    .result-card { padding: 36px 24px; }
+    .progress-bar { width: 100px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Study screen ── -->
+<div id="study-screen" style="display:flex; flex-direction:column; align-items:center; width:100%; min-height:100vh;">
+
+  <header class="header">
+    <span class="header-title">単語フラッシュカード</span>
+    <div class="progress-block">
+      <span class="progress-label" id="progress-label">1 / 50</span>
+      <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="card-row">
+      <button class="judge-btn btn-wrong" id="btn-wrong" disabled title="間違えた" aria-label="間違えた">✕</button>
+
+      <div class="scene" id="card-scene" role="button" aria-label="カードをクリックして答えを見る" tabindex="0">
+        <div class="card-inner" id="card-inner">
+          <!-- Front -->
+          <div class="card-face card-front">
+            <span class="word-label">単語</span>
+            <span class="word-text" id="card-word">棄兒</span>
+            <span class="card-hint">クリックして確認</span>
+          </div>
+          <!-- Back -->
+          <div class="card-face card-back">
+            <span class="pinyin-text" id="card-pinyin">qì ér</span>
+            <span class="meaning-text" id="card-meaning">捨て子転じて、見捨てられた存在、厄介者。</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="judge-btn btn-correct" id="btn-correct" disabled title="正解" aria-label="正解">○</button>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <button class="back-btn" id="btn-back" disabled>
+      ← 前の単語に戻る
+    </button>
+  </footer>
+</div>
+
+<!-- ── Result screen ── -->
+<div id="result-screen" class="result-screen">
+  <div class="result-card">
+    <div class="result-emoji" id="result-emoji">🎉</div>
+    <div class="result-title">セッション完了！</div>
+    <div class="result-stats" id="result-stats">全単語の学習が終わりました</div>
+    <div class="result-score-row">
+      <span class="score-pill score-correct" id="score-correct">○ 0語</span>
+      <span class="score-pill score-wrong" id="score-wrong">✕ 0語</span>
+    </div>
+    <div class="result-actions">
+      <button class="result-btn btn-primary-action" id="btn-retry">✕の単語だけで再挑戦</button>
+      <p class="download-notice" id="download-notice" style="display:none">（間違えた単語のHTMLを自動ダウンロードします）</p>
+      <button class="result-btn btn-secondary-action" id="btn-reset">最初からやり直す</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const masterVocabulary = [
+  { word: "棄兒", pinyin: "qì ér", meaning: "捨て子転じて、見捨てられた存在、厄介者。" },
+  { word: "燙手山芋", pinyin: "tàng shǒu shān yù", meaning: "触れると熱いサツマイモ転じて、扱いにくく厄介なもの。" },
+  { word: "搶破頭", pinyin: "qiǎng pò tóu", meaning: "我先にと奪い合う。激しい競争の様子を表す。" },
+  { word: "尚可", pinyin: "shàng kě", meaning: "まあ及第点だ、何とか良い。" },
+  { word: "撥回", pinyin: "bō huí", meaning: "（時計の針を）戻す。" },
+  { word: "琳琅滿目", pinyin: "lín láng mǎn mù", meaning: "美しい品々が目に満ちるさま。優れたものがたくさん並ぶ様子。" },
+  { word: "扎實", pinyin: "zhā shi", meaning: "しっかりしている、確実だ。" },
+  { word: "一席之地", pinyin: "yī xí zhī dì", meaning: "一人前の地位、居場所。" },
+  { word: "炙手可熱", pinyin: "zhì shǒu kě rè", meaning: "非常に勢いがあり、人気が高いことの比喩。" },
+  { word: "泥沼", pinyin: "ní zhǎo", meaning: "ドロドロの沼転じて、抜け出せない苦しい状況。" },
+  { word: "遊刃有餘", pinyin: "yóu rèn yǒu yú", meaning: "余裕を持ってこなす。料理の名人が包丁を自在に操る故事から。" },
+  { word: "傻瓜式", pinyin: "shǎguā shì", meaning: "バカでも使えるほど簡単な、初心者向けの。" },
+  { word: "橫空出世", pinyin: "héng kōng chū shì", meaning: "突然現れて世に出る。" },
+  { word: "蠶食", pinyin: "cán shí", meaning: "蚕が桑の葉を食むように少しずつ侵食する。" },
+  { word: "名列前茅", pinyin: "míng liè qián máo", meaning: "上位に入る。特に悪い意味でも使われる。" },
+  { word: "堪稱", pinyin: "kān chēng", meaning: "〜と言える、まさに〜と呼ぶにふさわしい。" },
+  { word: "啃下", pinyin: "kěn xià", meaning: "骨の折れることをやり遂げる、苦労してマスターする。" },
+  { word: "牢牢", pinyin: "láo láo", meaning: "しっかりと、がっしりと。" },
+  { word: "玩味", pinyin: "wán wèi", meaning: "味わう、深く考える。" },
+  { word: "青睞", pinyin: "qīng lài", meaning: "目をかける、引き立てる。好意的に見る。" },
+  { word: "歸宿", pinyin: "guī sù", meaning: "最終的に落ち着く場所、進路・就職先。" },
+  { word: "另闢蹊徑", pinyin: "lìng pì xī jìng", meaning: "別の道を切り開く。" },
+  { word: "即插即用", pinyin: "jí chā jí yòng", meaning: "プラグアンドプレイ（差し込めばすぐ動く）、すぐに現場で使える、即戦力の。" },
+  { word: "擠破頭", pinyin: "jǐ pò tóu", meaning: "頭を押し合って押し合いへし合いする、我先にと群がる（激しい競争や、誰もが殺到する様子を指す）。" },
+  { word: "頭銜", pinyin: "tóu xián", meaning: "肩書、タイトル。" },
+  { word: "把關", pinyin: "bǎ guān", meaning: "関所を守る、厳しくチェックする。" },
+  { word: "璀璨", pinyin: "cuǐ càn", meaning: "きらびやかで美しい、鮮やかに輝くさま。" },
+  { word: "躋身", pinyin: "jī shēn", meaning: "仲間入りする。" },
+  { word: "浩瀚", pinyin: "hào hàn", meaning: "広大で無辺なさま・広大で果てしない、膨大な。" },
+  { word: "淬煉", pinyin: "cuì liàn", meaning: "鍛え上げる、精錬する。" },
+  { word: "永恆", pinyin: "yǒng héng", meaning: "永遠の、永久不変の。" },
+  { word: "荊棘密佈", pinyin: "jīng jí mì bù", meaning: "イバラがびっしりと生えている。困難が多いことの比喩。" },
+  { word: "餬口", pinyin: "hú kǒu", meaning: "口を糊する、かろうじて食べていく。" },
+  { word: "康莊大道", pinyin: "kāng zhuāng dà dào", meaning: "広くて平坦な道転じて、明るい未来への道。" },
+  { word: "寒窗", pinyin: "hán chuāng", meaning: "苦学すること。貧しい学生時代の比喩。" },
+  { word: "學霸", pinyin: "xué bà", meaning: "成績が非常に優秀な学生。" },
+  { word: "牽動", pinyin: "qiān dòng", meaning: "引き動かす、影響を受ける。" },
+  { word: "棘手", pinyin: "jí shǒu", meaning: "扱いにくい、やっかいだ。" },
+  { word: "施展", pinyin: "shī zhǎn", meaning: "能力を発揮する。" },
+  { word: "望天興歎", pinyin: "wàng tiān xīng tàn", meaning: "天を見上げて嘆く。どうしようもなく嘆く様子。" },
+  { word: "癥結", pinyin: "zhēng jié", meaning: "癥結、問題の核心。" },
+  { word: "頹勢", pinyin: "tuí shì", meaning: "衰退の勢い。" },
+  { word: "塌陷", pinyin: "tā xiàn", meaning: "陥没する、崩れる。" },
+  { word: "繞道而行", pinyin: "rào dào ér xíng", meaning: "回り道をする、迂回する。" },
+  { word: "榜首", pinyin: "bǎng shǒu", meaning: "首位、トップ。" },
+  { word: "唏噓", pinyin: "xī xū", meaning: "嘆き悲しむこと。" }
+];
+
+// ── State ──
+let deck = [];
+let currentIndex = 0;
+let results = {};    // word -> 'correct' | 'wrong'
+let history = [];    // stack of indices into deck (for back button)
+let isFlipped = false;
+
+// ── DOM refs ──
+const cardInner  = document.getElementById('card-inner');
+const cardWord   = document.getElementById('card-word');
+const cardPinyin = document.getElementById('card-pinyin');
+const cardMeaning= document.getElementById('card-meaning');
+const btnWrong   = document.getElementById('btn-wrong');
+const btnCorrect = document.getElementById('btn-correct');
+const btnBack    = document.getElementById('btn-back');
+const progressLabel = document.getElementById('progress-label');
+const progressFill  = document.getElementById('progress-fill');
+const studyScreen   = document.getElementById('study-screen');
+const resultScreen  = document.getElementById('result-screen');
+
+// ── Shuffle helper ──
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ── Start / restart session ──
+function startSession(vocab) {
+  deck = shuffle(vocab);
+  currentIndex = 0;
+  results = {};
+  history = [];
+  isFlipped = false;
+  cardInner.classList.remove('flipped');
+  showCard(0);
+  studyScreen.style.display = 'flex';
+  resultScreen.style.display = 'none';
+}
+
+// ── Show card ──
+function showCard(idx) {
+  const item = deck[idx];
+  cardWord.textContent    = item.word;
+  cardPinyin.textContent  = item.pinyin;
+  cardMeaning.textContent = item.meaning;
+  updateProgress(idx);
+  setFlipped(false);
+}
+
+function setFlipped(flipped) {
+  isFlipped = flipped;
+  if (flipped) {
+    cardInner.classList.add('flipped');
+    btnWrong.disabled   = false;
+    btnCorrect.disabled = false;
+  } else {
+    cardInner.classList.remove('flipped');
+    btnWrong.disabled   = true;
+    btnCorrect.disabled = true;
+  }
+  btnBack.disabled = history.length === 0;
+}
+
+function updateProgress(idx) {
+  const total    = deck.length;
+  const done     = idx;
+  const pct      = total > 0 ? Math.round((done / total) * 100) : 0;
+  progressLabel.textContent = `${done + 1} / ${total}`;
+  progressFill.style.width  = pct + '%';
+}
+
+// ── Card flip ──
+document.getElementById('card-scene').addEventListener('click', () => {
+  if (!isFlipped) setFlipped(true);
+});
+document.getElementById('card-scene').addEventListener('keydown', (e) => {
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!isFlipped) setFlipped(true); }
+});
+
+// ── Judge ──
+function judge(verdict) {
+  const item = deck[currentIndex];
+  results[item.word] = verdict;
+  history.push(currentIndex);
+
+  const nextIndex = currentIndex + 1;
+  if (nextIndex >= deck.length) {
+    showResult();
+    return;
+  }
+  currentIndex = nextIndex;
+  cardInner.classList.remove('flipped');
+  setTimeout(() => showCard(currentIndex), 280);
+}
+
+btnWrong.addEventListener('click',   () => judge('wrong'));
+btnCorrect.addEventListener('click', () => judge('correct'));
+
+// ── Back ──
+btnBack.addEventListener('click', () => {
+  if (history.length === 0) return;
+  const prev = history.pop();
+  // Remove the result for the card we're going back to (they'll re-judge)
+  delete results[deck[prev].word];
+  currentIndex = prev;
+  cardInner.classList.remove('flipped');
+  setTimeout(() => showCard(currentIndex), 100);
+});
+
+// ── Result screen ──
+function showResult() {
+  studyScreen.style.display = 'none';
+  resultScreen.style.display = 'flex';
+
+  const total    = deck.length;
+  const wrongList= deck.filter(item => results[item.word] === 'wrong');
+  const wrongCount  = wrongList.length;
+  const correctCount= total - wrongCount;
+
+  const emoji = wrongCount === 0 ? '🏆' : wrongCount < total / 2 ? '🎉' : '📖';
+  document.getElementById('result-emoji').textContent = emoji;
+  document.getElementById('result-stats').textContent =
+    `${total}語の学習が完了しました`;
+  document.getElementById('score-correct').textContent = `○ ${correctCount}語`;
+  document.getElementById('score-wrong').textContent   = `✕ ${wrongCount}語`;
+
+  const notice = document.getElementById('download-notice');
+  if (wrongCount > 0) {
+    notice.style.display = 'block';
+    downloadRevisedHTML(wrongList);
+  } else {
+    notice.style.display = 'none';
+  }
+}
+
+document.getElementById('btn-retry').addEventListener('click', () => {
+  const wrongList = deck.filter(item => results[item.word] === 'wrong');
+  if (wrongList.length > 0) {
+    startSession(wrongList);
+  } else {
+    startSession(masterVocabulary);
+  }
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  startSession(masterVocabulary);
+});
+
+// ── Download revised HTML ──
+function downloadRevisedHTML(wrongList) {
+  const escaped = JSON.stringify(wrongList, null, 2)
+    .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+
+  const src = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>苦手単語フラッシュカード</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f0f2f5; --card-bg: #ffffff;
+    --card-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+    --text-primary: #1a1a2e; --text-secondary: #5a6a85; --text-pinyin: #3d6b9a;
+    --accent: #4f6ef7; --correct: #22a06b; --correct-light: #e3f9f0;
+    --wrong: #e5484d; --wrong-light: #ffeef0; --border: #dde2ec;
+    --btn-bg: #ffffff; --progress-track: #dde2ec; --progress-fill: #e5484d;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif; background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0; }
+  .header { width: 100%; background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .header-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .progress-block { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+  .progress-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .progress-bar { width: 140px; height: 4px; background: var(--progress-track); border-radius: 99px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: var(--progress-fill); border-radius: 99px; transition: width 0.4s ease; }
+  .main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; padding: 32px 20px 24px; gap: 28px; }
+  .scene { width: 100%; max-width: 520px; height: 300px; perspective: 1000px; cursor: pointer; }
+  .card-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1); }
+  .card-inner.flipped { transform: rotateY(180deg); }
+  .card-face { position: absolute; inset: 0; background: var(--card-bg); border-radius: 20px; box-shadow: var(--card-shadow); backface-visibility: hidden; -webkit-backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 36px; user-select: none; }
+  .card-back { transform: rotateY(180deg); }
+  .card-hint { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); opacity: 0.6; position: absolute; bottom: 18px; right: 22px; }
+  .badge { background: var(--wrong-light); color: var(--wrong); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; letter-spacing: 0.05em; text-transform: uppercase; position: absolute; top: 16px; left: 20px; }
+  .word-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); letter-spacing: 0.06em; margin-bottom: 14px; text-transform: uppercase; }
+  .word-text { font-size: clamp(32px, 7vw, 52px); font-weight: 700; color: var(--text-primary); text-align: center; line-height: 1.2; letter-spacing: 0.04em; }
+  .pinyin-text { font-size: 20px; font-weight: 500; color: var(--text-pinyin); margin-bottom: 18px; letter-spacing: 0.04em; }
+  .meaning-text { font-size: 16px; color: var(--text-primary); text-align: center; line-height: 1.65; max-width: 380px; }
+  .card-row { display: flex; align-items: center; justify-content: center; gap: 20px; width: 100%; max-width: 700px; }
+  .judge-btn { width: 64px; height: 64px; border-radius: 50%; border: none; font-size: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.3s; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+  .judge-btn:disabled { opacity: 0; pointer-events: none; }
+  .btn-wrong { background: var(--wrong-light); color: var(--wrong); }
+  .btn-correct { background: var(--correct-light); color: var(--correct); }
+  .judge-btn:not(:disabled):hover { transform: scale(1.12); box-shadow: 0 6px 20px rgba(0,0,0,0.16); }
+  .judge-btn:not(:disabled):active { transform: scale(0.96); }
+  .footer { padding: 0 20px 32px; display: flex; justify-content: center; width: 100%; }
+  .back-btn { background: var(--btn-bg); border: 1px solid var(--border); color: var(--text-secondary); font-size: 14px; font-weight: 500; padding: 10px 24px; border-radius: 99px; cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s; display: flex; align-items: center; gap: 6px; }
+  .back-btn:hover:not(:disabled) { background: #f5f7ff; border-color: var(--accent); color: var(--accent); }
+  .back-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .result-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; min-height: 100vh; padding: 40px 20px; gap: 28px; }
+  .result-card { background: #fff; border-radius: 24px; box-shadow: var(--card-shadow); padding: 48px 40px; max-width: 480px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+  .result-emoji { font-size: 56px; margin-bottom: 8px; }
+  .result-title { font-size: 24px; font-weight: 700; color: var(--text-primary); }
+  .result-stats { font-size: 16px; color: var(--text-secondary); line-height: 1.7; }
+  .result-score-row { display: flex; gap: 16px; margin: 12px 0; }
+  .score-pill { padding: 10px 24px; border-radius: 99px; font-size: 15px; font-weight: 600; }
+  .score-correct { background: var(--correct-light); color: var(--correct); }
+  .score-wrong { background: var(--wrong-light); color: var(--wrong); }
+  .result-actions { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; margin-top: 8px; }
+  .result-btn { width: 100%; padding: 14px 24px; border-radius: 12px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; transition: transform 0.1s, box-shadow 0.15s; }
+  .result-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+  .result-btn:active { transform: scale(0.98); }
+  .btn-primary-action { background: var(--accent); color: #fff; }
+  .btn-secondary-action { background: var(--btn-bg); border: 1px solid var(--border); color: var(--text-primary); }
+  @media (max-width: 480px) { .scene { height: 260px; } .card-face { padding: 24px 20px; } .judge-btn { width: 56px; height: 56px; font-size: 22px; } .card-row { gap: 12px; } .result-card { padding: 36px 24px; } .progress-bar { width: 100px; } }
+</style>
+</head>
+<body>
+<div id="study-screen" style="display:flex; flex-direction:column; align-items:center; width:100%; min-height:100vh;">
+  <header class="header">
+    <span class="header-title">苦手単語 復習モード</span>
+    <div class="progress-block">
+      <span class="progress-label" id="progress-label">1 / ?</span>
+      <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+  </header>
+  <main class="main">
+    <div class="card-row">
+      <button class="judge-btn btn-wrong" id="btn-wrong" disabled title="間違えた" aria-label="間違えた">✕</button>
+      <div class="scene" id="card-scene" role="button" aria-label="カードをクリックして答えを見る" tabindex="0">
+        <div class="card-inner" id="card-inner">
+          <div class="card-face card-front">
+            <span class="badge">苦手</span>
+            <span class="word-label">単語</span>
+            <span class="word-text" id="card-word"></span>
+            <span class="card-hint">クリックして確認</span>
+          </div>
+          <div class="card-face card-back">
+            <span class="pinyin-text" id="card-pinyin"></span>
+            <span class="meaning-text" id="card-meaning"></span>
+          </div>
+        </div>
+      </div>
+      <button class="judge-btn btn-correct" id="btn-correct" disabled title="正解" aria-label="正解">○</button>
+    </div>
+  </main>
+  <footer class="footer">
+    <button class="back-btn" id="btn-back" disabled>← 前の単語に戻る</button>
+  </footer>
+</div>
+<div id="result-screen" class="result-screen">
+  <div class="result-card">
+    <div class="result-emoji" id="result-emoji">🏆</div>
+    <div class="result-title">復習完了！</div>
+    <div class="result-stats" id="result-stats"></div>
+    <div class="result-score-row">
+      <span class="score-pill score-correct" id="score-correct">○ 0語</span>
+      <span class="score-pill score-wrong" id="score-wrong">✕ 0語</span>
+    </div>
+    <div class="result-actions">
+      <button class="result-btn btn-primary-action" id="btn-retry">✕の単語だけで再挑戦</button>
+      <button class="result-btn btn-secondary-action" id="btn-reset">最初からやり直す</button>
+    </div>
+  </div>
+</div>
+<script>
+const masterVocabulary = ${escaped};
+function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+let deck=[],currentIndex=0,results={},history=[],isFlipped=false;
+const cardInner=document.getElementById('card-inner'),cardWord=document.getElementById('card-word'),cardPinyin=document.getElementById('card-pinyin'),cardMeaning=document.getElementById('card-meaning'),btnWrong=document.getElementById('btn-wrong'),btnCorrect=document.getElementById('btn-correct'),btnBack=document.getElementById('btn-back'),progressLabel=document.getElementById('progress-label'),progressFill=document.getElementById('progress-fill'),studyScreen=document.getElementById('study-screen'),resultScreen=document.getElementById('result-screen');
+function startSession(vocab){deck=shuffle(vocab);currentIndex=0;results={};history=[];isFlipped=false;cardInner.classList.remove('flipped');showCard(0);studyScreen.style.display='flex';resultScreen.style.display='none';}
+function showCard(idx){const item=deck[idx];cardWord.textContent=item.word;cardPinyin.textContent=item.pinyin;cardMeaning.textContent=item.meaning;updateProgress(idx);setFlipped(false);}
+function setFlipped(f){isFlipped=f;if(f){cardInner.classList.add('flipped');btnWrong.disabled=false;btnCorrect.disabled=false;}else{cardInner.classList.remove('flipped');btnWrong.disabled=true;btnCorrect.disabled=true;}btnBack.disabled=history.length===0;}
+function updateProgress(idx){const total=deck.length,done=idx,pct=total>0?Math.round((done/total)*100):0;progressLabel.textContent=\`\${done+1} / \${total}\`;progressFill.style.width=pct+'%';}
+document.getElementById('card-scene').addEventListener('click',()=>{if(!isFlipped)setFlipped(true);});
+document.getElementById('card-scene').addEventListener('keydown',(e)=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();if(!isFlipped)setFlipped(true);}});
+function judge(verdict){const item=deck[currentIndex];results[item.word]=verdict;history.push(currentIndex);const nextIndex=currentIndex+1;if(nextIndex>=deck.length){showResult();return;}currentIndex=nextIndex;cardInner.classList.remove('flipped');setTimeout(()=>showCard(currentIndex),280);}
+btnWrong.addEventListener('click',()=>judge('wrong'));
+btnCorrect.addEventListener('click',()=>judge('correct'));
+btnBack.addEventListener('click',()=>{if(history.length===0)return;const prev=history.pop();delete results[deck[prev].word];currentIndex=prev;cardInner.classList.remove('flipped');setTimeout(()=>showCard(currentIndex),100);});
+function showResult(){studyScreen.style.display='none';resultScreen.style.display='flex';const total=deck.length,wrongList=deck.filter(item=>results[item.word]==='wrong'),wrongCount=wrongList.length,correctCount=total-wrongCount;document.getElementById('result-emoji').textContent=wrongCount===0?'🏆':wrongCount<total/2?'🎉':'📖';document.getElementById('result-stats').textContent=\`\${total}語の学習が完了しました\`;document.getElementById('score-correct').textContent=\`○ \${correctCount}語\`;document.getElementById('score-wrong').textContent=\`✕ \${wrongCount}語\`;}
+document.getElementById('btn-retry').addEventListener('click',()=>{const w=deck.filter(item=>results[item.word]==='wrong');startSession(w.length>0?w:masterVocabulary);});
+document.getElementById('btn-reset').addEventListener('click',()=>startSession(masterVocabulary));
+startSession(masterVocabulary);
+<\/script>
+</body>
+</html>`;
+
+  const blob = new Blob([src], { type: 'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'revised_flashcards.html';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+}
+
+// ── Keyboard shortcuts ──
+document.addEventListener('keydown', (e) => {
+  if (resultScreen.style.display !== 'none') return;
+  if (e.key === ' ' || e.key === 'Enter') {
+    e.preventDefault();
+    if (!isFlipped) setFlipped(true);
+  }
+  if (isFlipped) {
+    if (e.key === 'ArrowLeft' || e.key === 'x' || e.key === 'X') {
+      e.preventDefault(); judge('wrong');
+    }
+    if (e.key === 'ArrowRight' || e.key === 'o' || e.key === 'O') {
+      e.preventDefault(); judge('correct');
+    }
+  }
+  if (e.key === 'ArrowUp' || e.key === 'Backspace') {
+    if (!btnBack.disabled) { e.preventDefault(); btnBack.click(); }
+  }
+});
+
+// ── Init ──
+startSession(masterVocabulary);
+</script>
+</body>
+</html>
