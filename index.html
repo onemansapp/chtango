@@ -2,735 +2,561 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>単語フラッシュカード</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>中国語フラッシュカード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg: #f0f2f5;
-    --card-bg: #ffffff;
-    --card-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
-    --text-primary: #1a1a2e;
-    --text-secondary: #5a6a85;
-    --text-pinyin: #3d6b9a;
-    --accent: #4f6ef7;
-    --correct: #22a06b;
-    --correct-light: #e3f9f0;
-    --wrong: #e5484d;
-    --wrong-light: #ffeef0;
-    --border: #dde2ec;
-    --btn-bg: #ffffff;
-    --progress-track: #dde2ec;
-    --progress-fill: #4f6ef7;
-    --result-bg: #ffffff;
+  :root{
+    --bg: #eef0f4;
+    --bg-grid: #e3e6ed;
+    --ink: #1c1f26;
+    --ink-soft: #5b6270;
+    --ink-faint: #9aa0ad;
+    --card-front: #ffffff;
+    --card-back: #fbfaf7;
+    --accent: #3d4eb0;
+    --accent-soft: #e7e9fb;
+    --good: #1f9d6c;
+    --good-soft: #e3f6ee;
+    --bad: #c0392b;
+    --bad-soft: #fbe9e6;
+    --shadow-lg: 0 24px 48px -16px rgba(28,31,38,0.22), 0 2px 6px rgba(28,31,38,0.06);
+    --shadow-sm: 0 8px 20px -8px rgba(28,31,38,0.18);
+    --radius: 1.5rem;
+    --font-ui: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", system-ui, -apple-system, sans-serif;
+    --font-zh: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", var(--font-ui);
+    --font-jp: "Noto Sans JP", var(--font-ui);
+    --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
   }
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
-    background: var(--bg);
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+
+  body{
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(61,78,176,0.06), transparent 40%),
+      radial-gradient(circle at 88% 92%, rgba(192,57,43,0.05), transparent 40%),
+      var(--bg);
+    font-family: var(--font-ui);
+    color: var(--ink);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
   }
 
-  /* ── Header ── */
-  .header {
+  .app{
     width: 100%;
-    background: rgba(255,255,255,0.88);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border);
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    max-width: 560px;
+    min-height: 100vh;
+    padding: clamp(1.25rem, 4vw, 2.5rem) clamp(1rem, 5vw, 2rem) 2.5rem;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
   }
 
-  .header-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-primary);
-    letter-spacing: 0.01em;
+  /* ---------- progress ---------- */
+  .progress-wrap{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    gap:.5rem;
+    margin-bottom: clamp(1.5rem, 5vw, 3rem);
+  }
+  .progress-top{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+  }
+  .progress-eyebrow{
+    font-size:.72rem;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color: var(--ink-faint);
+    font-weight:600;
+  }
+  .progress-text{
+    font-family: var(--font-mono);
+    font-size: .95rem;
+    font-weight:600;
+    color: var(--ink-soft);
+    letter-spacing: .02em;
+  }
+  .progress-track{
+    width:100%;
+    height:6px;
+    border-radius:99px;
+    background: var(--bg-grid);
+    overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;
+    width:0%;
+    border-radius:99px;
+    background: linear-gradient(90deg, var(--accent), #6f7cd1);
+    transition: width .45s cubic-bezier(.4,.2,.2,1);
   }
 
-  .progress-block {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 5px;
+  /* ---------- game screen ---------- */
+  .stage{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    flex:1;
   }
 
-  .progress-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-primary);
+  .judge-row{
+    display:flex;
+    gap: clamp(1.5rem, 6vw, 2.75rem);
+    margin-bottom: 1.25rem;
+    opacity:0;
+    visibility:hidden;
+    transform: translateY(6px);
+    pointer-events:none;
+    transition: opacity .25s ease, transform .25s ease, visibility .25s;
   }
-
-  .progress-bar {
-    width: 120px;
-    height: 4px;
-    background: var(--progress-track);
-    border-radius: 99px;
-    overflow: hidden;
+  .judge-row.active{
+    opacity:1;
+    visibility:visible;
+    transform: translateY(0);
+    pointer-events:auto;
   }
-
-  .progress-bar-fill {
-    height: 100%;
-    background: var(--progress-fill);
-    border-radius: 99px;
-    transition: width 0.4s ease;
+  .judge-btn{
+    width: 64px;
+    height: 64px;
+    border-radius:50%;
+    border: 2px solid transparent;
+    font-size: 1.5rem;
+    font-weight:700;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition: transform .15s ease, box-shadow .15s ease;
+    box-shadow: var(--shadow-sm);
   }
+  .judge-btn:hover{ transform: translateY(-3px); }
+  .judge-btn:active{ transform: translateY(0) scale(.96); }
+  .judge-btn.wrong{ background: var(--bad-soft); color: var(--bad); }
+  .judge-btn.correct{ background: var(--good-soft); color: var(--good); }
 
-  /* ── Main area ── */
-  .main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    padding: 16px 10px 16px;
-    gap: 14px;
+  .card-wrap{
+    width: min(92vw, 380px);
+    aspect-ratio: 3 / 4;
+    perspective: 1600px;
+    margin-bottom: clamp(1.5rem, 5vw, 2.5rem);
   }
-
-  /* ── Judge buttons row (above card) ── */
-  .judge-row {
-    display: flex;
-    gap: 12px;
-    width: 100%;
-    max-width: 640px;
-  }
-
-  .judge-btn {
-    flex: 1;
-    height: 56px;
-    border-radius: 14px;
-    border: none;
-    font-size: 22px;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.25s;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.10);
-    letter-spacing: 0.02em;
-  }
-
-  .judge-btn .btn-label {
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  .judge-btn:disabled {
-    opacity: 0.25;
-    pointer-events: none;
-  }
-
-  .btn-wrong {
-    background: var(--wrong-light);
-    color: var(--wrong);
-  }
-
-  .btn-correct {
-    background: var(--correct-light);
-    color: var(--correct);
-  }
-
-  .judge-btn:not(:disabled):hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.14);
-  }
-
-  .judge-btn:not(:disabled):active {
-    transform: scale(0.97);
-  }
-
-  /* ── Card scene (3D flip) ── */
-  .scene {
-    width: 100%;
-    max-width: 640px;
-    height: 380px;
-    perspective: 1000px;
-    cursor: pointer;
-  }
-
-  .card-inner {
-    width: 100%;
-    height: 100%;
-    position: relative;
+  .card{
+    position:relative;
+    width:100%;
+    height:100%;
+    cursor:pointer;
     transform-style: preserve-3d;
-    transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
+    transition: transform .65s cubic-bezier(.4,.2,.2,1);
+    border-radius: var(--radius);
   }
-
-  .card-inner.flipped {
-    transform: rotateY(180deg);
+  .card:focus-visible{
+    outline: 3px solid var(--accent);
+    outline-offset: 4px;
   }
+  .card.flipped{ transform: rotateY(180deg); }
 
-  .card-face {
-    position: absolute;
-    inset: 0;
-    background: var(--card-bg);
-    border-radius: 20px;
-    box-shadow: var(--card-shadow);
+  .card-face{
+    position:absolute;
+    inset:0;
+    border-radius: var(--radius);
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 28px 24px;
-    user-select: none;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding: 2rem 1.5rem;
+    box-shadow: var(--shadow-lg);
   }
 
-  .card-back {
+  .card-front{ background: var(--card-front); }
+  .word{
+    font-family: var(--font-zh);
+    font-weight:800;
+    font-size: clamp(2.1rem, 9vw, 3rem);
+    color: var(--ink);
+    line-height:1.25;
+    word-break: keep-all;
+  }
+  .hint{
+    margin-top:1.75rem;
+    font-size:.78rem;
+    color: var(--ink-faint);
+    letter-spacing:.05em;
+  }
+
+  .card-back{
+    background: var(--card-back);
     transform: rotateY(180deg);
+    border: 1px solid rgba(28,31,38,0.05);
   }
-
-  .card-hint {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    opacity: 0.5;
-    position: absolute;
-    bottom: 16px;
-    right: 20px;
+  .word-mini{
+    font-family: var(--font-zh);
+    font-weight:700;
+    font-size: 1.05rem;
+    color: var(--ink-faint);
+    margin-bottom: 1.1rem;
   }
-
-  .word-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    letter-spacing: 0.1em;
-    margin-bottom: 16px;
-    text-transform: uppercase;
-    opacity: 0.7;
-  }
-
-  .word-text {
-    font-size: clamp(44px, 11vw, 72px);
-    font-weight: 700;
-    color: var(--text-primary);
-    text-align: center;
-    line-height: 1.15;
-    letter-spacing: 0.04em;
-  }
-
-  .pinyin-text {
-    font-size: clamp(20px, 5vw, 26px);
-    font-weight: 500;
-    color: var(--text-pinyin);
-    margin-bottom: 20px;
-    letter-spacing: 0.05em;
-    text-align: center;
-  }
-
-  .meaning-text {
-    font-size: clamp(15px, 4vw, 18px);
-    color: var(--text-primary);
-    text-align: center;
-    line-height: 1.7;
-    max-width: 460px;
-  }
-
-  /* ── Footer / back button ── */
-  .footer {
-    padding: 0 10px 28px;
-    display: flex;
-    justify-content: center;
-    width: 100%;
-  }
-
-  .back-btn {
-    background: var(--btn-bg);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    font-size: 14px;
-    font-weight: 500;
-    padding: 10px 24px;
-    border-radius: 99px;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .back-btn:hover:not(:disabled) {
-    background: #f5f7ff;
-    border-color: var(--accent);
+  .pinyin{
+    font-family: var(--font-mono);
+    font-size: .95rem;
+    font-weight:600;
     color: var(--accent);
-    box-shadow: 0 2px 8px rgba(79,110,247,0.12);
-  }
-
-  .back-btn:disabled {
-    opacity: 0.32;
-    cursor: not-allowed;
-  }
-
-  /* ── Result screen ── */
-  .result-screen {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    min-height: 100vh;
-    padding: 40px 16px;
-    gap: 28px;
-  }
-
-  .result-card {
-    background: var(--result-bg);
-    border-radius: 24px;
-    box-shadow: var(--card-shadow);
-    padding: 44px 32px;
-    max-width: 460px;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    text-align: center;
-  }
-
-  .result-emoji { font-size: 54px; margin-bottom: 6px; }
-
-  .result-title {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text-primary);
-  }
-
-  .result-stats {
-    font-size: 15px;
-    color: var(--text-secondary);
-    line-height: 1.7;
-  }
-
-  .result-score-row {
-    display: flex;
-    gap: 14px;
-    margin: 10px 0;
-  }
-
-  .score-pill {
-    padding: 10px 22px;
+    background: var(--accent-soft);
+    padding: .35rem .85rem;
     border-radius: 99px;
-    font-size: 15px;
-    font-weight: 600;
+    letter-spacing:.03em;
+    margin-bottom: 1.4rem;
+  }
+  .meaning{
+    font-family: var(--font-jp);
+    font-size: clamp(1.05rem, 4.5vw, 1.25rem);
+    font-weight:500;
+    color: var(--ink);
+    line-height:1.7;
+    max-width: 90%;
   }
 
-  .score-correct { background: var(--correct-light); color: var(--correct); }
-  .score-wrong   { background: var(--wrong-light);   color: var(--wrong);   }
+  .back-btn{
+    border:none;
+    background:none;
+    font-family: var(--font-ui);
+    font-size:.92rem;
+    font-weight:600;
+    color: var(--ink-soft);
+    padding: .7rem 1.2rem;
+    border-radius: 99px;
+    cursor:pointer;
+    transition: background .15s ease, color .15s ease, opacity .15s ease;
+  }
+  .back-btn:not(:disabled):hover{ background: var(--bg-grid); color: var(--ink); }
+  .back-btn:disabled{ opacity:.35; cursor:not-allowed; }
 
-  .result-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 11px;
-    width: 100%;
-    max-width: 300px;
-    margin-top: 6px;
+  /* ---------- result screen ---------- */
+  .result-screen{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    padding-top: clamp(1.5rem, 8vw, 3rem);
+  }
+  .result-eyebrow{
+    font-size:.74rem;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color: var(--accent);
+    font-weight:700;
+    margin-bottom:.6rem;
+  }
+  .result-screen h1{
+    font-family: var(--font-jp);
+    font-size: clamp(1.5rem, 6vw, 1.9rem);
+    margin: 0 0 .5rem;
+  }
+  .result-summary{
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+    margin: 0 0 1.75rem;
+  }
+  .result-summary strong{ color: var(--ink); font-weight:700; }
+
+  .missed-list{
+    list-style:none;
+    margin:0 0 1.75rem;
+    padding:0;
+    width:100%;
+    max-height: 260px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:.5rem;
+  }
+  .missed-list li{
+    display:flex;
+    align-items:baseline;
+    gap:.6rem;
+    background:#fff;
+    border-radius: .9rem;
+    padding:.7rem .9rem;
+    box-shadow: var(--shadow-sm);
+    text-align:left;
+  }
+  .missed-word{ font-family: var(--font-zh); font-weight:700; font-size:1.05rem; flex-shrink:0; }
+  .missed-pinyin{ font-family: var(--font-mono); font-size:.78rem; color: var(--accent); flex-shrink:0; }
+  .missed-meaning{ font-family: var(--font-jp); font-size:.85rem; color: var(--ink-soft); }
+
+  .download-note{
+    font-size:.85rem;
+    color: var(--good);
+    background: var(--good-soft);
+    border-radius: 99px;
+    padding:.5rem 1.1rem;
+    margin: 0 0 1.5rem;
   }
 
-  .result-btn {
-    width: 100%;
-    padding: 14px 20px;
-    border-radius: 12px;
-    border: none;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.1s, box-shadow 0.15s;
+  .retry-btn{
+    border:none;
+    background: var(--accent);
+    color:#fff;
+    font-family: var(--font-ui);
+    font-weight:700;
+    font-size: 1rem;
+    padding: .9rem 1.8rem;
+    border-radius: 99px;
+    cursor:pointer;
+    box-shadow: var(--shadow-sm);
+    transition: transform .15s ease, box-shadow .15s ease;
   }
+  .retry-btn:hover{ transform: translateY(-2px); }
+  .retry-btn:active{ transform: translateY(0); }
 
-  .result-btn:hover  { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.11); }
-  .result-btn:active { transform: scale(0.98); }
+  [hidden]{ display:none !important; }
 
-  .btn-primary-action   { background: var(--accent); color: #fff; }
-  .btn-secondary-action { background: var(--btn-bg); border: 1px solid var(--border); color: var(--text-primary); }
-
-  .download-notice {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-top: -4px;
-    opacity: 0.65;
-  }
-
-  @media (max-width: 400px) {
-    .scene { height: 330px; }
-    .judge-btn { height: 52px; font-size: 20px; }
-    .result-card { padding: 32px 20px; }
+  @media (prefers-reduced-motion: reduce){
+    .card, .judge-row, .progress-fill, .retry-btn, .judge-btn, .back-btn{ transition: none !important; }
   }
 </style>
 </head>
 <body>
+  <div class="app">
 
-<div id="study-screen" style="display:flex; flex-direction:column; align-items:center; width:100%; min-height:100vh;">
+    <header class="progress-wrap">
+      <div class="progress-top">
+        <span class="progress-eyebrow">学習進行</span>
+        <span class="progress-text" id="progressText">0 / 0</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </header>
 
-  <header class="header">
-    <span class="header-title">単語フラッシュカード</span>
-    <div class="progress-block">
-      <span class="progress-label" id="progress-label">1 / 46</span>
-      <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
-    </div>
-  </header>
+    <main class="stage" id="gameScreen">
 
-  <main class="main">
+      <div class="judge-row" id="judgeRow">
+        <button class="judge-btn wrong" id="btnWrong" aria-label="間違えた">✕</button>
+        <button class="judge-btn correct" id="btnCorrect" aria-label="正解">◯</button>
+      </div>
 
-    <!-- ◯✕ buttons ABOVE the card -->
-    <div class="judge-row">
-      <button class="judge-btn btn-wrong"   id="btn-wrong"   disabled aria-label="間違えた">
-        ✕ <span class="btn-label">間違えた</span>
-      </button>
-      <button class="judge-btn btn-correct" id="btn-correct" disabled aria-label="正解">
-        ○ <span class="btn-label">正解</span>
-      </button>
-    </div>
-
-    <!-- Card -->
-    <div class="scene" id="card-scene" role="button" aria-label="カードをクリックして答えを見る" tabindex="0">
-      <div class="card-inner" id="card-inner">
-        <div class="card-face card-front">
-          <span class="word-label">単語</span>
-          <span class="word-text" id="card-word">棄兒</span>
-          <span class="card-hint">タップして確認</span>
-        </div>
-        <div class="card-face card-back">
-          <span class="pinyin-text" id="card-pinyin">qì ér</span>
-          <span class="meaning-text" id="card-meaning">捨て子転じて、見捨てられた存在、厄介者。</span>
+      <div class="card-wrap">
+        <div class="card" id="card" tabindex="0" role="button" aria-label="カードをめくる">
+          <div class="card-face card-front">
+            <span class="word" id="wordFront"></span>
+            <span class="hint">タップして答えを見る</span>
+          </div>
+          <div class="card-face card-back">
+            <span class="word-mini" id="wordBack"></span>
+            <span class="pinyin" id="pinyinBack"></span>
+            <span class="meaning" id="meaningBack"></span>
+          </div>
         </div>
       </div>
-    </div>
 
-  </main>
+      <button class="back-btn" id="backBtn" disabled>← 前の単語に戻る</button>
 
-  <footer class="footer">
-    <button class="back-btn" id="btn-back" disabled>← 前の単語に戻る</button>
-  </footer>
-</div>
+    </main>
 
-<!-- Result screen -->
-<div id="result-screen" class="result-screen">
-  <div class="result-card">
-    <div class="result-emoji" id="result-emoji">🎉</div>
-    <div class="result-title">セッション完了！</div>
-    <div class="result-stats" id="result-stats">全単語の学習が終わりました</div>
-    <div class="result-score-row">
-      <span class="score-pill score-correct" id="score-correct">○ 0語</span>
-      <span class="score-pill score-wrong"   id="score-wrong">✕ 0語</span>
-    </div>
-    <div class="result-actions">
-      <button class="result-btn btn-primary-action"   id="btn-retry">✕の単語だけで再挑戦</button>
-      <p class="download-notice" id="download-notice" style="display:none">（間違えた単語のHTMLを自動ダウンロード）</p>
-      <button class="result-btn btn-secondary-action" id="btn-reset">最初からやり直す</button>
-    </div>
+    <section class="result-screen" id="resultScreen" hidden>
+      <span class="result-eyebrow">Session Complete</span>
+      <h1>学習完了</h1>
+      <p class="result-summary" id="resultSummary"></p>
+      <ul class="missed-list" id="missedList"></ul>
+      <p class="download-note" id="downloadNote" hidden>苦手単語だけのファイル（revised_flashcards.html）をダウンロードしました。</p>
+      <button class="retry-btn" id="retryBtn">✕の単語だけで再挑戦</button>
+    </section>
+
   </div>
-</div>
 
 <script>
-const masterVocabulary = [
-  { word: "裂痕", pinyin: "liè hén", meaning: "亀裂、仲たがい" },
-  { word: "碎裂", pinyin: "suì liè", meaning: "砕け散る、ばらばらに割れる" },
-  { word: "荷包", pinyin: "hé bāo", meaning: "財布、懐（元々は巾着袋のこと）。" },
-  { word: "作妖", pinyin: "zuò yāo", meaning: "ややこしい問題を起こす、突飛な行動で引っかき回す" },
-  { word: "错综复杂", pinyin: "cuò zōng fù zá", meaning: "複雑に入り組んでいる" },
-  { word: "情资", pinyin: "qíng zī", meaning: "情報、インテリジェンス" },
-  { word: "潜伏", pinyin: "qián fú", meaning: "潜伏する、潜り込む。" },
-  { word: "八卦", pinyin: "bā guà", meaning: "ゴシップ、噂話、スキャンダル" },
-  { word: "同穿一件裤子", pinyin: "tóng chuān yī jiàn kù zi", meaning: "ぐるになる、一心同体である、非常に親しい間柄" },
-  { word: "味道", pinyin: "wèi dào", meaning: "ニュアンス、雰囲気。" },
-  { word: "诓", pinyin: "kuāng", meaning: "騙す、担ぐ" },
-  { word: "软柿子", pinyin: "ruǎn shì zi", meaning: "扱いやすい人、弱い相手" },
-  { word: "搞定", pinyin: "gǎo dìng", meaning: "解決する、片付ける" },
-  { word: "说了算", pinyin: "shuō le suàn", meaning: "決定権を持つ、支配する、牛耳る" },
-  { word: "垫高", pinyin: "diàn gāo", meaning: "底上げされる、積み上がって高くなる" },
-  { word: "好威", pinyin: "hǎo wēi", meaning: "とても威風堂々としている、かっこいい" },
-  { word: "住手", pinyin: "zhù shǒu", meaning: "手を止める、やめる" },
-  { word: "深仇大恨", pinyin: "shēn chóu dà hèn", meaning: "深い恨み、根深い怨恨（四字熟語）" },
-  { word: "赶尽杀绝", pinyin: "gǎn jìn shā jué", meaning: "根絶やしにする、一人残らず抹殺する" },
-  { word: "可恶", pinyin: "kě wù", meaning: "憎らしい、けしからん" },
-  { word: "广泛", pinyin: "guǎng fàn", meaning: "広範囲に、広く" },
-  { word: "爆粗口", pinyin: "bào cū kǒu", meaning: "汚い言葉を使う" },
-  { word: "拖下水", pinyin: "tuō xià shuǐ", meaning: "泥沼に引きずり込む、巻き添えにする" },
-  { word: "冗长", pinyin: "rǒng cháng", meaning: "長たらしい、無駄に長い" },
-  { word: "谈拢", pinyin: "tán lǒng", meaning: "話がまとまる、合意に達する" },
-  { word: "一环扣一环", pinyin: "yī huán kòu yī huán", meaning: "次から次へと緊密に連動している" },
-  { word: "紧咬不放", pinyin: "jǐn yǎo bù fàng", meaning: "執拗にしがみつく、譲歩しない。" },
-  { word: "焦灼", pinyin: "jiāo zhuó", meaning: "膠着している、一進一退の緊迫した状態" },
-  { word: "底定", pinyin: "dǐ dìng", meaning: "定まる、落ち着く、大局が決まる" }
-];
+(function(){
 
-// ── State ──
-let deck = [], currentIndex = 0, results = {}, history = [], isFlipped = false;
+  const masterVocabulary = [
+    { word: "毫不犹豫", pinyin: "háo bù yóu yù", meaning: "少しも躊躇しない、迷わずきっぱりと" },
+    { word: "无厘头", pinyin: "wú lí tóu", meaning: "わけがわからない、ナンセンスな" },
+    { word: "一拍即合", pinyin: "yī pāi jí hé", meaning: "すぐに意気投合する、話がすぐにまとまる" },
+    { word: "提示词", pinyin: "tí shì cí", meaning: "プロンプト（AIへの指示語句）" },
+    { word: "随机", pinyin: "suí jī", meaning: "ランダムである、状況に応じる" },
+    { word: "一败涂地", pinyin: "yī bài tú dì", meaning: "完敗する、無残に敗北する" },
+    { word: "弊端", pinyin: "bì duān", meaning: "弊害、欠陥、デメリット" },
+    { word: "遗迹", pinyin: "yí jì", meaning: "遺跡、名残" },
+    { word: "说到底", pinyin: "shuō dào dǐ", meaning: "結局のところ、突き詰めると" },
+    { word: "离谱", pinyin: "lí pǔ", meaning: "常識外れである、度が過ぎている、話がそれる" },
+    { word: "映射", pinyin: "yìng shè", meaning: "マッピングする、反映する、投影する" },
+    { word: "预判", pinyin: "yù pàn", meaning: "予測、見通し" },
+    { word: "痛点", pinyin: "tòng diǎn", meaning: "ビジネスや技術における「最大の課題」" },
+    { word: "畅想", pinyin: "chàng xiǎng", meaning: "自由に想像を膨らませる、のびのびと想う" },
+    { word: "实操", pinyin: "shí cāo", meaning: "実践的な操作、実務、実際の運用" },
+    { word: "端详", pinyin: "duān xiáng", meaning: "じっくり観察する、熟視する" },
+    { word: "蜕变", pinyin: "tuì biàn", meaning: "脱皮する、変貌を遂げる" },
+    { word: "近在咫尺", pinyin: "jìn zài zhǐ chǐ", meaning: "極めて近くにある" }
+  ]; // END_MASTER_VOCABULARY
 
-// ── DOM refs ──
-const cardInner   = document.getElementById('card-inner');
-const cardWord    = document.getElementById('card-word');
-const cardPinyin  = document.getElementById('card-pinyin');
-const cardMeaning = document.getElementById('card-meaning');
-const btnWrong    = document.getElementById('btn-wrong');
-const btnCorrect  = document.getElementById('btn-correct');
-const btnBack     = document.getElementById('btn-back');
-const progressLabel = document.getElementById('progress-label');
-const progressFill  = document.getElementById('progress-fill');
-const studyScreen   = document.getElementById('study-screen');
-const resultScreen  = document.getElementById('result-screen');
+  // ---------------- state ----------------
+  let deckOrder = [];
+  let currentStep = 0;
+  let history = [];      // stack of judged step indices
+  let results = {};       // step index -> 'correct' | 'wrong'
+  let isFlipped = false;
+  let lastWrongItems = [];
 
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+  const $ = id => document.getElementById(id);
+  const card = $('card');
+  const judgeRow = $('judgeRow');
+  const backBtn = $('backBtn');
+  const gameScreen = $('gameScreen');
+  const resultScreen = $('resultScreen');
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i = a.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
   }
-  return a;
-}
 
-function startSession(vocab) {
-  deck = shuffle(vocab);
-  currentIndex = 0; results = {}; history = []; isFlipped = false;
-  cardInner.classList.remove('flipped');
-  showCard(0);
-  studyScreen.style.display = 'flex';
-  resultScreen.style.display = 'none';
-}
+  function startSession(source){
+    deckOrder = shuffle(source);
+    currentStep = 0;
+    history = [];
+    results = {};
+    isFlipped = false;
 
-function showCard(idx) {
-  const item = deck[idx];
-  cardWord.textContent    = item.word;
-  cardPinyin.textContent  = item.pinyin;
-  cardMeaning.textContent = item.meaning;
-  updateProgress(idx);
-  setFlipped(false);
-}
+    resultScreen.hidden = true;
+    gameScreen.style.display = '';
+    card.classList.remove('flipped');
+    judgeRow.classList.remove('active');
 
-function setFlipped(f) {
-  isFlipped = f;
-  if (f) {
-    cardInner.classList.add('flipped');
-    btnWrong.disabled   = false;
-    btnCorrect.disabled = false;
-  } else {
-    cardInner.classList.remove('flipped');
-    btnWrong.disabled   = true;
-    btnCorrect.disabled = true;
+    renderCard();
   }
-  btnBack.disabled = history.length === 0;
-}
 
-function updateProgress(idx) {
-  const total = deck.length, pct = total > 0 ? Math.round((idx / total) * 100) : 0;
-  progressLabel.textContent = `${idx + 1} / ${total}`;
-  progressFill.style.width  = pct + '%';
-}
+  function renderCard(){
+    const item = deckOrder[currentStep];
+    $('wordFront').textContent = item.word;
+    $('wordBack').textContent = item.word;
+    $('pinyinBack').textContent = item.pinyin;
+    $('meaningBack').textContent = item.meaning;
 
-document.getElementById('card-scene').addEventListener('click', () => { if (!isFlipped) setFlipped(true); });
-document.getElementById('card-scene').addEventListener('keydown', e => {
-  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!isFlipped) setFlipped(true); }
-});
+    isFlipped = false;
+    card.classList.remove('flipped');
+    judgeRow.classList.remove('active');
 
-function judge(verdict) {
-  results[deck[currentIndex].word] = verdict;
-  history.push(currentIndex);
-  const next = currentIndex + 1;
-  if (next >= deck.length) { showResult(); return; }
-  currentIndex = next;
-  cardInner.classList.remove('flipped');
-  setTimeout(() => showCard(currentIndex), 280);
-}
-
-btnWrong.addEventListener('click',   () => judge('wrong'));
-btnCorrect.addEventListener('click', () => judge('correct'));
-
-btnBack.addEventListener('click', () => {
-  if (history.length === 0) return;
-  const prev = history.pop();
-  delete results[deck[prev].word];
-  currentIndex = prev;
-  cardInner.classList.remove('flipped');
-  setTimeout(() => showCard(currentIndex), 100);
-});
-
-function showResult() {
-  studyScreen.style.display = 'none';
-  resultScreen.style.display = 'flex';
-  const total     = deck.length;
-  const wrongList = deck.filter(item => results[item.word] === 'wrong');
-  const wc = wrongList.length, cc = total - wc;
-  document.getElementById('result-emoji').textContent    = wc === 0 ? '🏆' : wc < total / 2 ? '🎉' : '📖';
-  document.getElementById('result-stats').textContent    = `${total}語の学習が完了しました`;
-  document.getElementById('score-correct').textContent   = `○ ${cc}語`;
-  document.getElementById('score-wrong').textContent     = `✕ ${wc}語`;
-  const notice = document.getElementById('download-notice');
-  if (wc > 0) { notice.style.display = 'block'; downloadRevisedHTML(wrongList); }
-  else { notice.style.display = 'none'; }
-}
-
-document.getElementById('btn-retry').addEventListener('click', () => {
-  const w = deck.filter(item => results[item.word] === 'wrong');
-  startSession(w.length > 0 ? w : masterVocabulary);
-});
-document.getElementById('btn-reset').addEventListener('click', () => startSession(masterVocabulary));
-
-function downloadRevisedHTML(wrongList) {
-  const escaped = JSON.stringify(wrongList, null, 2)
-    .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
-
-  const src = `<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>苦手単語フラッシュカード</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-:root{--bg:#f0f2f5;--card-bg:#fff;--card-shadow:0 8px 32px rgba(0,0,0,0.12),0 2px 8px rgba(0,0,0,0.08);--text-primary:#1a1a2e;--text-secondary:#5a6a85;--text-pinyin:#3d6b9a;--accent:#4f6ef7;--correct:#22a06b;--correct-light:#e3f9f0;--wrong:#e5484d;--wrong-light:#ffeef0;--border:#dde2ec;--btn-bg:#fff;--progress-track:#dde2ec;--progress-fill:#e5484d;}
-body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic UI',sans-serif;background:var(--bg);min-height:100vh;display:flex;flex-direction:column;align-items:center;}
-.header{width:100%;background:rgba(255,255,255,0.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
-.header-title{font-size:14px;font-weight:600;color:var(--text-primary);}
-.progress-block{display:flex;flex-direction:column;align-items:flex-end;gap:5px;}
-.progress-label{font-size:13px;font-weight:600;color:var(--text-primary);}
-.progress-bar{width:120px;height:4px;background:var(--progress-track);border-radius:99px;overflow:hidden;}
-.progress-bar-fill{height:100%;background:var(--progress-fill);border-radius:99px;transition:width 0.4s ease;}
-.main{flex:1;display:flex;flex-direction:column;align-items:center;width:100%;padding:16px 10px 16px;gap:14px;}
-.judge-row{display:flex;gap:12px;width:100%;max-width:640px;}
-.judge-btn{flex:1;height:56px;border-radius:14px;border:none;font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform 0.15s,box-shadow 0.15s,opacity 0.25s;box-shadow:0 3px 10px rgba(0,0,0,0.10);}
-.judge-btn .btn-label{font-size:14px;font-weight:600;}
-.judge-btn:disabled{opacity:0.25;pointer-events:none;}
-.btn-wrong{background:var(--wrong-light);color:var(--wrong);}
-.btn-correct{background:var(--correct-light);color:var(--correct);}
-.judge-btn:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,0.14);}
-.judge-btn:not(:disabled):active{transform:scale(0.97);}
-.scene{width:100%;max-width:640px;height:380px;perspective:1000px;cursor:pointer;}
-.card-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform 0.55s cubic-bezier(0.4,0.2,0.2,1);}
-.card-inner.flipped{transform:rotateY(180deg);}
-.card-face{position:absolute;inset:0;background:var(--card-bg);border-radius:20px;box-shadow:var(--card-shadow);backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 24px;user-select:none;}
-.card-back{transform:rotateY(180deg);}
-.card-hint{font-size:11px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-secondary);opacity:0.5;position:absolute;bottom:16px;right:20px;}
-.badge{background:var(--wrong-light);color:var(--wrong);font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:0.05em;text-transform:uppercase;position:absolute;top:14px;left:18px;}
-.word-label{font-size:12px;font-weight:500;color:var(--text-secondary);letter-spacing:0.1em;margin-bottom:16px;text-transform:uppercase;opacity:0.7;}
-.word-text{font-size:clamp(44px,11vw,72px);font-weight:700;color:var(--text-primary);text-align:center;line-height:1.15;letter-spacing:0.04em;}
-.pinyin-text{font-size:clamp(20px,5vw,26px);font-weight:500;color:var(--text-pinyin);margin-bottom:20px;letter-spacing:0.05em;text-align:center;}
-.meaning-text{font-size:clamp(15px,4vw,18px);color:var(--text-primary);text-align:center;line-height:1.7;max-width:460px;}
-.footer{padding:0 10px 28px;display:flex;justify-content:center;width:100%;}
-.back-btn{background:var(--btn-bg);border:1px solid var(--border);color:var(--text-secondary);font-size:14px;font-weight:500;padding:10px 24px;border-radius:99px;cursor:pointer;display:flex;align-items:center;gap:6px;}
-.back-btn:hover:not(:disabled){background:#f5f7ff;border-color:var(--accent);color:var(--accent);}
-.back-btn:disabled{opacity:0.32;cursor:not-allowed;}
-.result-screen{display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;min-height:100vh;padding:40px 16px;gap:28px;}
-.result-card{background:#fff;border-radius:24px;box-shadow:var(--card-shadow);padding:44px 32px;max-width:460px;width:100%;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;}
-.result-emoji{font-size:54px;margin-bottom:6px;}
-.result-title{font-size:22px;font-weight:700;color:var(--text-primary);}
-.result-stats{font-size:15px;color:var(--text-secondary);line-height:1.7;}
-.result-score-row{display:flex;gap:14px;margin:10px 0;}
-.score-pill{padding:10px 22px;border-radius:99px;font-size:15px;font-weight:600;}
-.score-correct{background:var(--correct-light);color:var(--correct);}
-.score-wrong{background:var(--wrong-light);color:var(--wrong);}
-.result-actions{display:flex;flex-direction:column;gap:11px;width:100%;max-width:300px;margin-top:6px;}
-.result-btn{width:100%;padding:14px 20px;border-radius:12px;border:none;font-size:15px;font-weight:600;cursor:pointer;transition:transform 0.1s,box-shadow 0.15s;}
-.result-btn:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,0.11);}
-.result-btn:active{transform:scale(0.98);}
-.btn-primary-action{background:var(--accent);color:#fff;}
-.btn-secondary-action{background:var(--btn-bg);border:1px solid var(--border);color:var(--text-primary);}
-@media(max-width:400px){.scene{height:330px;}.judge-btn{height:52px;font-size:20px;}.result-card{padding:32px 20px;}}
-</style>
-</head>
-<body>
-<div id="study-screen" style="display:flex;flex-direction:column;align-items:center;width:100%;min-height:100vh;">
-  <header class="header">
-    <span class="header-title">苦手単語 復習モード</span>
-    <div class="progress-block">
-      <span class="progress-label" id="progress-label">1 / ?</span>
-      <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
-    </div>
-  </header>
-  <main class="main">
-    <div class="judge-row">
-      <button class="judge-btn btn-wrong" id="btn-wrong" disabled aria-label="間違えた">✕ <span class="btn-label">間違えた</span></button>
-      <button class="judge-btn btn-correct" id="btn-correct" disabled aria-label="正解">○ <span class="btn-label">正解</span></button>
-    </div>
-    <div class="scene" id="card-scene" role="button" aria-label="カードをクリックして答えを見る" tabindex="0">
-      <div class="card-inner" id="card-inner">
-        <div class="card-face card-front">
-          <span class="badge">苦手</span>
-          <span class="word-label">単語</span>
-          <span class="word-text" id="card-word"></span>
-          <span class="card-hint">タップして確認</span>
-        </div>
-        <div class="card-face card-back">
-          <span class="pinyin-text" id="card-pinyin"></span>
-          <span class="meaning-text" id="card-meaning"></span>
-        </div>
-      </div>
-    </div>
-  </main>
-  <footer class="footer">
-    <button class="back-btn" id="btn-back" disabled>← 前の単語に戻る</button>
-  </footer>
-</div>
-<div id="result-screen" class="result-screen">
-  <div class="result-card">
-    <div class="result-emoji" id="result-emoji">🏆</div>
-    <div class="result-title">復習完了！</div>
-    <div class="result-stats" id="result-stats"></div>
-    <div class="result-score-row">
-      <span class="score-pill score-correct" id="score-correct">○ 0語</span>
-      <span class="score-pill score-wrong" id="score-wrong">✕ 0語</span>
-    </div>
-    <div class="result-actions">
-      <button class="result-btn btn-primary-action" id="btn-retry">✕の単語だけで再挑戦</button>
-      <button class="result-btn btn-secondary-action" id="btn-reset">最初からやり直す</button>
-    </div>
-  </div>
-</div>
-<script>
-const masterVocabulary=${escaped};
-function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-let deck=[],currentIndex=0,results={},history=[],isFlipped=false;
-const cardInner=document.getElementById('card-inner'),cardWord=document.getElementById('card-word'),cardPinyin=document.getElementById('card-pinyin'),cardMeaning=document.getElementById('card-meaning'),btnWrong=document.getElementById('btn-wrong'),btnCorrect=document.getElementById('btn-correct'),btnBack=document.getElementById('btn-back'),progressLabel=document.getElementById('progress-label'),progressFill=document.getElementById('progress-fill'),studyScreen=document.getElementById('study-screen'),resultScreen=document.getElementById('result-screen');
-function startSession(vocab){deck=shuffle(vocab);currentIndex=0;results={};history=[];isFlipped=false;cardInner.classList.remove('flipped');showCard(0);studyScreen.style.display='flex';resultScreen.style.display='none';}
-function showCard(idx){const item=deck[idx];cardWord.textContent=item.word;cardPinyin.textContent=item.pinyin;cardMeaning.textContent=item.meaning;updateProgress(idx);setFlipped(false);}
-function setFlipped(f){isFlipped=f;if(f){cardInner.classList.add('flipped');btnWrong.disabled=false;btnCorrect.disabled=false;}else{cardInner.classList.remove('flipped');btnWrong.disabled=true;btnCorrect.disabled=true;}btnBack.disabled=history.length===0;}
-function updateProgress(idx){const total=deck.length,pct=total>0?Math.round((idx/total)*100):0;progressLabel.textContent=\`\${idx+1} / \${total}\`;progressFill.style.width=pct+'%';}
-document.getElementById('card-scene').addEventListener('click',()=>{if(!isFlipped)setFlipped(true);});
-document.getElementById('card-scene').addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();if(!isFlipped)setFlipped(true);}});
-function judge(verdict){results[deck[currentIndex].word]=verdict;history.push(currentIndex);const next=currentIndex+1;if(next>=deck.length){showResult();return;}currentIndex=next;cardInner.classList.remove('flipped');setTimeout(()=>showCard(currentIndex),280);}
-btnWrong.addEventListener('click',()=>judge('wrong'));
-btnCorrect.addEventListener('click',()=>judge('correct'));
-btnBack.addEventListener('click',()=>{if(history.length===0)return;const prev=history.pop();delete results[deck[prev].word];currentIndex=prev;cardInner.classList.remove('flipped');setTimeout(()=>showCard(currentIndex),100);});
-function showResult(){studyScreen.style.display='none';resultScreen.style.display='flex';const total=deck.length,wrongList=deck.filter(item=>results[item.word]==='wrong'),wc=wrongList.length,cc=total-wc;document.getElementById('result-emoji').textContent=wc===0?'🏆':wc<total/2?'🎉':'📖';document.getElementById('result-stats').textContent=\`\${total}語の学習が完了しました\`;document.getElementById('score-correct').textContent=\`○ \${cc}語\`;document.getElementById('score-wrong').textContent=\`✕ \${wc}語\`;}
-document.getElementById('btn-retry').addEventListener('click',()=>{const w=deck.filter(item=>results[item.word]==='wrong');startSession(w.length>0?w:masterVocabulary);});
-document.getElementById('btn-reset').addEventListener('click',()=>startSession(masterVocabulary));
-startSession(masterVocabulary);
-<\/script>
-</body>
-</html>`;
-
-  const blob = new Blob([src], { type: 'text/html;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = 'revised_flashcards.html';
-  document.body.appendChild(a); a.click();
-  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
-}
-
-document.addEventListener('keydown', e => {
-  if (resultScreen.style.display !== 'none') return;
-  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!isFlipped) setFlipped(true); }
-  if (isFlipped) {
-    if (e.key === 'ArrowLeft'  || e.key === 'x' || e.key === 'X') { e.preventDefault(); judge('wrong'); }
-    if (e.key === 'ArrowRight' || e.key === 'o' || e.key === 'O') { e.preventDefault(); judge('correct'); }
+    updateProgress();
+    backBtn.disabled = history.length === 0;
   }
-  if (e.key === 'ArrowUp' || e.key === 'Backspace') { if (!btnBack.disabled) { e.preventDefault(); btnBack.click(); } }
-});
 
-startSession(masterVocabulary);
+  function updateProgress(){
+    $('progressText').textContent = (currentStep + 1) + ' / ' + deckOrder.length;
+    $('progressFill').style.width = ((currentStep / deckOrder.length) * 100) + '%';
+  }
+
+  function setFlipped(flip){
+    isFlipped = flip;
+    card.classList.toggle('flipped', flip);
+    judgeRow.classList.toggle('active', flip);
+  }
+
+  card.addEventListener('click', () => setFlipped(!isFlipped));
+  card.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      setFlipped(!isFlipped);
+    }
+  });
+
+  function judge(result){
+    results[currentStep] = result;
+    history.push(currentStep);
+    currentStep++;
+
+    if(currentStep >= deckOrder.length){
+      showResults();
+    } else {
+      renderCard();
+    }
+  }
+
+  $('btnWrong').addEventListener('click', (e) => { e.stopPropagation(); judge('wrong'); });
+  $('btnCorrect').addEventListener('click', (e) => { e.stopPropagation(); judge('correct'); });
+
+  backBtn.addEventListener('click', () => {
+    if(history.length === 0) return;
+    currentStep = history.pop();
+    renderCard();
+  });
+
+  function showResults(){
+    gameScreen.style.display = 'none';
+    resultScreen.hidden = false;
+
+    const wrongItems = deckOrder.filter((item, idx) => results[idx] === 'wrong');
+    const total = deckOrder.length;
+    lastWrongItems = wrongItems;
+
+    $('resultSummary').innerHTML =
+      '間違えた単語: <strong>' + wrongItems.length + '語</strong> / 総数 <strong>' + total + '語</strong>';
+
+    const list = $('missedList');
+    list.innerHTML = '';
+    wrongItems.forEach(item => {
+      const li = document.createElement('li');
+      const w = document.createElement('span');
+      w.className = 'missed-word';
+      w.textContent = item.word;
+      const p = document.createElement('span');
+      p.className = 'missed-pinyin';
+      p.textContent = item.pinyin;
+      const m = document.createElement('span');
+      m.className = 'missed-meaning';
+      m.textContent = item.meaning;
+      li.append(w, p, m);
+      list.appendChild(li);
+    });
+
+    if(wrongItems.length > 0){
+      downloadRevisedHTML(wrongItems);
+      $('downloadNote').hidden = false;
+    } else {
+      $('downloadNote').hidden = true;
+    }
+  }
+
+  $('retryBtn').addEventListener('click', () => {
+    startSession(lastWrongItems.length > 0 ? lastWrongItems : masterVocabulary);
+  });
+
+  function downloadRevisedHTML(wrongItems){
+    try{
+      const fullHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      const newVocabJSON = JSON.stringify(wrongItems, null, 2);
+      const pattern = /const masterVocabulary = \[[\s\S]*?\];\s*\/\/ END_MASTER_VOCABULARY/;
+      const replacement = 'const masterVocabulary = ' + newVocabJSON + '; // END_MASTER_VOCABULARY';
+      const newHtml = fullHtml.replace(pattern, replacement);
+
+      const blob = new Blob([newHtml], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'revised_flashcards.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch(err){
+      console.error('復習用ファイルの生成に失敗しました', err);
+    }
+  }
+
+  startSession(masterVocabulary);
+
+})();
 </script>
 </body>
 </html>
